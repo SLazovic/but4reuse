@@ -28,17 +28,16 @@ public class ClassElement extends AbstractElement{
 	public double similarity(IElement anotherElement) {
 		// TODO Auto-generated method stub
 		ClassElement tmpClass=(ClassElement)anotherElement;
-		//if(jclass.equals(tmpClass.getJclass()))
-		if(name.equals(tmpClass.getName()))
+		if(jclass.equals(tmpClass.getJclass())){
 			return 1;
-		else
-			return 0;
+		}
+		return 0;
 	}
 
 	@Override
 	public String getText() {
 		// TODO Auto-generated method stub
-		return name;//jclass.getClassName();
+		return jclass.getClassName();
 	}
 
 }
