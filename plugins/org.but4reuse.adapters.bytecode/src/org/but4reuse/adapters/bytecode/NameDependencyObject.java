@@ -2,13 +2,13 @@ package org.but4reuse.adapters.bytecode;
 
 import org.but4reuse.adapters.IDependencyObject;
 
-public class ClassNameDependencyObject implements IDependencyObject{
+public class NameDependencyObject implements IDependencyObject{
 	
-	private String className;
+	private String name;
 	
-	public ClassNameDependencyObject(String className) {
+	public NameDependencyObject(String name) {
 		// TODO Auto-generated constructor stub
-		this.className=className;
+		this.name=name;
 	}
 
 	@Override
@@ -26,13 +26,13 @@ public class ClassNameDependencyObject implements IDependencyObject{
 	@Override
 	public String getDependencyObjectText() {
 		// TODO Auto-generated method stub
-		return className;
+		return name;
 	}
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof ClassNameDependencyObject)
-			return className.equals(((ClassNameDependencyObject) obj).className);
+		if (obj instanceof NameDependencyObject)
+			return name.equals(((NameDependencyObject) obj).name);
 		return super.equals(obj);
 	}
 }

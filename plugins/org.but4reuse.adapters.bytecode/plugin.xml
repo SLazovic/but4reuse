@@ -10,7 +10,15 @@
             name="Bytecode">
          <elements>
             <element
-                  element="org.but4reuse.adapters.bytecode.ClassElement"></element>
+                  element="org.but4reuse.adapters.bytecode.MethodElement"></element>
+            <element
+                  element="org.but4reuse.adapters.bytecode.FieldElement"></element>
+            <element
+                  element="org.but4reuse.adapters.bytecode.InterfaceNameElement"></element>
+            <element
+                  element="org.but4reuse.adapters.bytecode.AccessFlagsElement"></element>
+            <element
+                  element="org.but4reuse.adapters.bytecode.SuperClassNameElement"></element>
          </elements>
       </adapter>
    </extension>

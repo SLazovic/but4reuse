@@ -12,5 +12,6 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.swt
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
-Bundle-ClassPath: libs/bcel-6.2.jar,
- .
+Bundle-ClassPath: .,
+ libs/asm-6.1.jar,
+ libs/asm-tree-6.0.jar
