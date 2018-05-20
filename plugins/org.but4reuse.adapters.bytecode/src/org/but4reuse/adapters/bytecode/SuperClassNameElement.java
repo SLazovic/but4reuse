@@ -3,9 +3,22 @@ package org.but4reuse.adapters.bytecode;
 import org.but4reuse.adapters.IElement;
 import org.but4reuse.adapters.impl.AbstractElement;
 
+/**
+ * An AbstractElement that represents the class's superclass
+ */
+
 public class SuperClassNameElement extends AbstractElement{
 	
+	/**
+	 * The name of the superclass
+	 */
+	
 	private String superClassName;
+	
+	/**
+	 * Class name that owns this field
+	 */
+	
 	private String className;
 	
 	@Override
@@ -24,25 +37,34 @@ public class SuperClassNameElement extends AbstractElement{
 		// TODO Auto-generated method stub
 		return className+"-SuperClass-"+superClassName;
 	}
+	
+	/**
+	 * Constructs a new SuperClassNameElement
+	 * @param superClassName the name of the superclass
+	 * @param className the class name
+	 */
+	
 	public SuperClassNameElement(String superClassName, String className) {
 		super();
 		this.superClassName = superClassName;
 		this.className = className;
 	}
 
+	/**
+	 * Return the superclass name
+	 * @return the name of the superClass
+	 */
+	
 	public String getSuperClassName() {
 		return superClassName;
 	}
 
-	public void setSuperClassName(String superClassName) {
-		this.superClassName = superClassName;
-	}
-
+	/**
+	 * Return the class name that extends this? superclass
+	 * @return className the class name
+	 */
+	
 	public String getClassName() {
 		return className;
-	}
-
-	public void setClassName(String className) {
-		this.className = className;
 	}
 }

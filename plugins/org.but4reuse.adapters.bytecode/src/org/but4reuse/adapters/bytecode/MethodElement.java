@@ -5,9 +5,22 @@ import org.but4reuse.adapters.impl.AbstractElement;
 import org.but4reuse.adapters.utils.BytecodeUtils;
 import org.objectweb.asm.tree.MethodNode;
 
+/**
+ * An AbstractElement that represents a class method
+ */
+
 public class MethodElement extends AbstractElement{
 	
+	/**
+	 * The method's data
+	 */
+	
 	private MethodNode method;
+	
+	/**
+	 * Class name that owns this method
+	 */
+	
 	private String className;
 	
 	@Override
@@ -27,25 +40,33 @@ public class MethodElement extends AbstractElement{
 		return className+"-Method-"+method.name+"-"+method.desc;
 	}
 
+	/**
+	 * Constructs a new MethodElement
+	 * @param method The method
+	 * @param className the method's owner
+	 */
+	
 	public MethodElement(MethodNode method, String className) {
 		super();
 		this.method = method;
 		this.className = className;
 	}
 
+	/**
+	 * Return the method's data
+	 * @return The method
+	 */
+	
 	public MethodNode getMethod() {
 		return method;
 	}
 
-	public void setMethod(MethodNode method) {
-		this.method = method;
-	}
-
+	/**
+	 * Return the owner class name
+	 * @return The class name
+	 */
+	
 	public String getClassName() {
 		return className;
-	}
-
-	public void setClassName(String className) {
-		this.className = className;
 	}
 }

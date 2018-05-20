@@ -14,7 +14,16 @@ import org.but4reuse.adapters.utils.BytecodeUtils;
 import org.but4reuse.utils.files.FileUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.MethodNode;
+
+/**
+ * Bytecode adapter
+ *
+ */
 
 public class BytecodeAdapter implements IAdapter{
 
@@ -38,6 +47,17 @@ public class BytecodeAdapter implements IAdapter{
 		String dir=FileUtils.getFile(uri).getAbsolutePath()+"/";
 		File dirF=new File(dir);
 		dirF.mkdirs();
+		Map<String, JClass> map=constructMap(elements);
+		createFiles(dir, map);		
+	}
+	
+	/**
+	 * Group all elements by their class name in a map
+	 * @param elements list of IElement
+	 * @return A map of all JClasses 
+	 */
+	
+	public Map<String, JClass> constructMap(List<IElement> elements){
 		Map<String, JClass> map=new HashMap<String, JClass>();
 		for(IElement e:elements){
 			if(e instanceof MethodElement){
@@ -55,6 +75,11 @@ public class BytecodeAdapter implements IAdapter{
 					c=new JClass(fe.getClassName());
 					map.put(fe.getClassName(), c);
 				}
+				if(fe.getInstructions()!=null)
+					if(c.getInstructions()==null)
+						c.setInstructions(fe.getInstructions());
+					else
+						c.getInstructions().addAll(fe.getInstructions());
 				c.addField(fe);
 			}else if(e instanceof InterfaceNameElement){
 				InterfaceNameElement ine=(InterfaceNameElement)e;
@@ -82,6 +107,16 @@ public class BytecodeAdapter implements IAdapter{
 				c.setAccessFlags(afe.getAccessFlags());
 			}
 		}
+		return map;
+	}
+	
+	/**
+	 * Method that creates bytecode files from a map in a given directory
+	 * @param dir is the path to use to create bytecode files
+	 * @param map contains bytecode elements
+	 */
+	
+	public void createFiles(String dir, Map<String, JClass> map){
 		for(String key:map.keySet()){
 			JClass c=map.get(key);
 			ClassNode cn=new ClassNode();
@@ -91,6 +126,15 @@ public class BytecodeAdapter implements IAdapter{
 			cn.interfaces=c.getInterfaces();
 			cn.fields=c.getFields();
 			cn.methods=c.getMethods();
+			if(c.getInstructions()!=null&&c.getInstructions().size()>0){
+				MethodNode mn=new MethodNode(8, "<clinit>", "()V", null, new String[0]);
+				InsnList il=new InsnList();
+				for(AbstractInsnNode ai:c.getInstructions())
+					il.add(ai);
+				il.add(new InsnNode(177));
+				mn.instructions=il;
+				cn.methods.add(0, mn);
+			}
 			try {
 				String []split=cn.name.split("/");
 				String packages=cn.name.replace(split[split.length-1], "");
@@ -107,6 +151,5 @@ public class BytecodeAdapter implements IAdapter{
 				e1.printStackTrace();
 			}
 		}
-		
 	}
 }

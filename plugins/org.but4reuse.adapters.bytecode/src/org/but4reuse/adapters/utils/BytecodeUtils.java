@@ -7,7 +7,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.but4reuse.adapters.IElement;
 import org.but4reuse.adapters.bytecode.AccessFlagsElement;
 import org.but4reuse.adapters.bytecode.FieldElement;
@@ -21,7 +24,10 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.FrameNode;
 import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
@@ -36,16 +42,26 @@ import org.objectweb.asm.tree.TableSwitchInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
+/**
+ * Bytecode utils
+ *
+ */
+
 public class BytecodeUtils {
+	
+	/**
+	 * Bytecode's magic number
+	 */
 	
 	public static final byte []magicNumber={(byte)0xCA, (byte)0xFE, (byte)0xBA, (byte)0xBE};
 	
 	/**
 	 * Check if a file is a bytecode based on the magic number (CAFEBABE)
 	 * 
-	 * @param file
+	 * @param file The file
 	 * @return true if it is a bytecode
 	 */
+	
 	public static boolean isBytecodeFile(File file) {
 		if(file==null||!file.exists())
 			return false;
@@ -74,10 +90,11 @@ public class BytecodeUtils {
 	/**
 	 * Check if a file is a bytecode or if a directory contains a bytecode file based on the extension and the magic number using isBytecodeFile
 	 * 
-	 * @param file
-	 * @param name
+	 * @param file The file
+	 * @param name The file name
 	 * @return whether it is found or not
 	 */
+	
 	public static boolean containsBytecodeFile(File file, String name){
 		if(file.isDirectory()){
 			for (File child : file.listFiles()) {
@@ -91,6 +108,12 @@ public class BytecodeUtils {
 		}
 	}
 	
+	/**
+	 * Read all bytecode from a given uri and return the list of all elements
+	 * @param uri The uri
+	 * @return list of IElement
+	 */
+	
 	public static List<IElement> getArtefactElements(URI uri) {
 		List<IElement> listElem=new ArrayList<IElement>();
 		File file = FileUtils.getFile(uri);
@@ -102,15 +125,74 @@ public class BytecodeUtils {
 					ClassNode cn=new ClassNode();
 					cr.accept(cn, ClassReader.EXPAND_FRAMES);
 					String className=cn.name;
+					Map<String, ArrayList<AbstractInsnNode>> fieldInsn=new HashMap<String, ArrayList<AbstractInsnNode>>();
+					for(MethodNode mn:cn.methods){
+						if(mn.name.equals("<clinit>")){
+							InsnList il=mn.instructions;
+							ArrayList<AbstractInsnNode> fil=null;
+							String fname=null;
+							for(int i=0; i<il.size(); i++){
+								AbstractInsnNode ab=il.get(i);
+								if(ab.getOpcode()==-1&&ab.getType()==8){
+									if(fil!=null&&fname!=null){
+										fieldInsn.put(fname, fil);
+										fname=null;
+									}
+									fil=new ArrayList<AbstractInsnNode>();
+									fil.add(insnClone(ab));
+								}else if(ab.getOpcode()==177&&ab.getType()==0){
+									fieldInsn.put(fname, fil);
+								}else{
+									fil.add(insnClone(ab));
+									if(ab instanceof FieldInsnNode)
+										fname=((FieldInsnNode)ab).name;
+								}							
+							}
+						}else{
+							MethodElement me=new MethodElement(mn, className);
+							me.addDependency(new NameDependencyObject(me.getText()));
+	// 
+	//						List<String> requiredList=new ArrayList<String>();
+	//						InsnList instructions=mn.instructions;
+	//						for(int i=0; i<instructions.size(); i++){
+	//							AbstractInsnNode ai=instructions.get(i);
+	//							if(ai instanceof FieldInsnNode){
+	//								FieldInsnNode fi=(FieldInsnNode)ai;
+	//								if(fi.owner.equals(className)){
+	//									String s=className+"-Field-"+fi.name;
+	//									if(!requiredList.contains(s)){
+	//										requiredList.add(s);
+	//									}
+	//									//me.addDependency(new RequiredDependencyObject(className, fi.name));
+	//								}
+	//							}else if(ai instanceof MethodInsnNode){
+	//								MethodInsnNode mi=(MethodInsnNode)ai;
+	//								if(mi.owner.equals(className)){
+	//									String s=className+"-Method-"+mi.name+"-"+mi.desc;
+	//									if(!requiredList.contains(s)){
+	//										requiredList.add(s);
+	//									}
+	//									//me.addDependency(new RequiredDependencyObject(className, mi.name, mi.desc));
+	//								}
+	//							}
+	//						}
+	//						for(String s:requiredList){
+	//							System.out.println(mn.name+" "+mn.desc+"   "+s);
+	//							me.addDependency(new RequiredDependencyObject(s, mn.name+" "+mn.desc));
+	//						}
+							listElem.add(me);
+						}
+					}
+					
 					for(FieldNode fn:cn.fields){
 						FieldElement fe=new FieldElement(fn, className);
 						fe.addDependency(new NameDependencyObject(fe.getText()));
+						ArrayList<AbstractInsnNode> il=fieldInsn.get(fn.name);
+						if(il!=null)
+							fe.setInstructions(il);
+						else
+							fe.setInstructions(new ArrayList<AbstractInsnNode>());
 						listElem.add(fe);
-					}
-					for(MethodNode mn:cn.methods){
-						MethodElement me=new MethodElement(mn, className);
-						me.addDependency(new NameDependencyObject(me.getText()));
-						listElem.add(me);
 					}
 					for(String i:cn.interfaces){
 						InterfaceNameElement ine=new InterfaceNameElement(i, className);
@@ -125,17 +207,30 @@ public class BytecodeUtils {
 					
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
-					System.out.println(f.getAbsolutePath());
-					//e.printStackTrace();
+					e.printStackTrace();
 				}
 			}	
 		}
 		return listElem;
 	}
 	
+	/**
+	 * Field comparator
+	 * @param f1 The first field
+	 * @param f2 The second field
+	 * @return return true if two fields are equals
+	 */
+	
 	public static boolean fieldComparator(FieldNode f1, FieldNode f2){
 		return f1.name.equals(f2.name)&&f1.desc.equals(f2.desc)&&f1.access==f2.access;
 	}
+	
+	/**
+	 * Instruction comparator
+	 * @param ai1 The first instruction
+	 * @param ai2 The second instruction
+	 * @return return true if two instructions are equals
+	 */
 	
 	public static boolean instructionComparator(AbstractInsnNode ai1, AbstractInsnNode ai2){
 		if(ai1.getOpcode()==ai2.getOpcode()&&ai1.getType()==ai2.getType()){
@@ -207,6 +302,13 @@ public class BytecodeUtils {
 		return false;
 	}
 	
+	/**
+	 * Method comparator
+	 * @param m1 The first method
+	 * @param m2 The second method
+	 * @return return true if two methods are equals
+	 */
+	
 	public static boolean methodComparator(MethodNode m1, MethodNode m2){
 		if(m1.name.equals(m2.name)&&m1.desc.equals(m2.desc)&&m1.access==m2.access&&m1.instructions.size()==m2.instructions.size()){
 			for(int i=0; i<m1.instructions.size(); i++){
@@ -216,5 +318,69 @@ public class BytecodeUtils {
 			return true;
 		}
 		return false;
+	}
+	
+	/**
+	 * Clone an AbstractInsnNode
+	 * @param insn The given AbstractInsnNode 
+	 * @return The clone of insn
+	 */
+	
+	public static AbstractInsnNode insnClone(AbstractInsnNode insn){
+		AbstractInsnNode ret=null;
+		if(insn instanceof InsnNode){
+			InsnNode i=(InsnNode)insn;
+			ret=new InsnNode(i.getOpcode());
+		}else if(insn instanceof FieldInsnNode){
+			FieldInsnNode i=(FieldInsnNode)insn;
+			ret=new FieldInsnNode(i.getOpcode(), i.owner, i.name, i.desc);
+		}else if(insn instanceof LdcInsnNode){
+			LdcInsnNode i=(LdcInsnNode)insn;
+			ret=new LdcInsnNode(i.cst);
+		}else if(insn instanceof IntInsnNode){
+			IntInsnNode i=(IntInsnNode)insn;
+			ret=new IntInsnNode(i.getOpcode(), i.operand);
+		}else if(insn instanceof VarInsnNode){
+			VarInsnNode i=(VarInsnNode)insn;
+			ret=new VarInsnNode(i.getOpcode(), i.var);
+		}else if(insn instanceof TypeInsnNode){
+			TypeInsnNode i=(TypeInsnNode)insn;
+			ret=new TypeInsnNode(i.getOpcode(), i.desc);
+		}else if(insn instanceof InvokeDynamicInsnNode){
+			InvokeDynamicInsnNode i=(InvokeDynamicInsnNode)insn;
+			ret=new InvokeDynamicInsnNode(i.name, i.desc, i.bsm, i.bsmArgs);
+		}else if(insn instanceof JumpInsnNode){
+			JumpInsnNode i=(JumpInsnNode)insn;
+			ret=new JumpInsnNode(i.getOpcode(), i.label);
+		}else if(insn instanceof LabelNode){
+			LabelNode i=(LabelNode)insn;
+			ret=new LabelNode(i.getLabel());
+		}else if(insn instanceof IincInsnNode){
+			IincInsnNode i=(IincInsnNode)insn;
+			ret=new IincInsnNode(i.var, i.incr);
+		}else if(insn instanceof LineNumberNode){
+			LineNumberNode i=(LineNumberNode)insn;
+			ret=new LineNumberNode(i.line, i.start);
+		}else if(insn instanceof MethodInsnNode){
+			MethodInsnNode i=(MethodInsnNode)insn;
+			ret=new MethodInsnNode(i.getOpcode(), i.owner, i.name, i.desc, i.itf);
+		}else if(insn instanceof MultiANewArrayInsnNode){
+			MultiANewArrayInsnNode i=(MultiANewArrayInsnNode)insn;
+			ret=new MultiANewArrayInsnNode(i.desc, i.dims);
+		}else if(insn instanceof LookupSwitchInsnNode){
+			LookupSwitchInsnNode i=(LookupSwitchInsnNode)insn;
+			int []keys=new int[i.keys.size()];
+			int cpt=0;
+			for(int j:i.keys)
+				keys[cpt++]=j;
+			ret=new LookupSwitchInsnNode(i.dflt, keys, (LabelNode[]) i.labels.toArray());
+		}else if(insn instanceof TableSwitchInsnNode){
+			TableSwitchInsnNode i=(TableSwitchInsnNode)insn;
+			ret=new TableSwitchInsnNode(i.min, i.max, i.dflt, (LabelNode[]) i.labels.toArray());
+		}else if(insn instanceof FrameNode){
+			FrameNode i=(FrameNode)insn;
+			ret=new FrameNode(i.type, i.local.size(), i.local.toArray(), i.stack.size(), i.stack.toArray());
+		}
+		return ret;
 	}
 }
